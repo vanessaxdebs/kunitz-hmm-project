@@ -40,4 +40,9 @@ python3 $SCRIPTS_DIR/run_hmmsearch.py --hmm "$HMM_FILE" --seqs "$POSITIVES" --ou
 echo " Step 5: Validating model..."
 python3 $SCRIPTS_DIR/validate_model.py --hmm "$HMM_FILE" --positives "$POSITIVES" --negatives "$NEGATIVES"
 
-echo " Pipeline complete. All steps finished successfully."
+echo "Validating HMM model"
+python scripts/validate_model.py \
+  --results results/hmmsearch_output.tbl \
+  --positives data/processed/positives.fasta \
+  --negatives data/processed/negatives.fasta
+
