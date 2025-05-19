@@ -1,49 +1,46 @@
 #!/bin/bash
 set -euo pipefail
 
-# Paths
-RAW_FASTA="data/raw/kunitz.fasta"
-ALIGNMENT="model/kunitz.sto"
-HMM_MODEL="model/kunitz.hmm"
-RESULTS="results/hmmsearch_output.tbl"
-POSITIVES="data/processed/positives.fasta"
-NEGATIVES="data/processed/negatives.fasta"
+# Directories
+RAW_DIR="data/raw"
+PROCESSED_DIR="data/processed"
+MODEL_DIR="model"
+RESULTS_DIR="results"
 
-echo "Downloading reviewed UniProt sequences with Kunitz domain (InterPro IPR002223)..."
+# Make sure directories exist
+mkdir -p $RAW_DIR $PROCESSED_DIR $MODEL_DIR $RESULTS_DIR
+
+echo "Downloading Kunitz sequences from UniProt..."
 curl -G "https://rest.uniprot.org/uniprotkb/search" \
-  --data-urlencode "query=reviewed:true AND database_interpro:IPR002223" \
+  --data-urlencode "query=reviewed:true AND kunitz" \
   --data-urlencode "format=fasta" \
-  -o $RAW_FASTA
+  -o $RAW_DIR/kunitz.fasta
 
-# Check how many sequences downloaded
-NUM_SEQ=$(grep -c "^>" $RAW_FASTA || true)
-echo "Number of sequences downloaded: $NUM_SEQ"
-
-if [[ $NUM_SEQ -lt 5 ]]; then
-  echo "Warning: Less than 5 sequences downloaded, you might want more diverse sequences for a good HMM."
+SEQ_COUNT=$(grep -c "^>" $RAW_DIR/kunitz.fasta || echo 0)
+if [ "$SEQ_COUNT" -lt 10 ]; then
+  echo "Warning: Only $SEQ_COUNT sequences found. Try to get more sequences for a better model."
 fi
 
-echo "Running multiple sequence alignment with MAFFT..."
-mafft --auto $RAW_FASTA > $ALIGNMENT
+echo "Running multiple sequence alignment with mafft..."
+mafft --auto $RAW_DIR/kunitz.fasta > $MODEL_DIR/kunitz.aln
 
-echo "Building HMM from alignment..."
-hmmbuild $HMM_MODEL $ALIGNMENT
+echo "Converting alignment to Stockholm format..."
+seqmagick convert $MODEL_DIR/kunitz.aln $MODEL_DIR/kunitz.sto
 
-echo "Searching positives and negatives with hmmsearch..."
-# Search positives
-hmmsearch --tblout results/pos_hmmsearch.tbl $HMM_MODEL $POSITIVES > /dev/null
-# Search negatives
-hmmsearch --tblout results/neg_hmmsearch.tbl $HMM_MODEL $NEGATIVES > /dev/null
+echo "Building HMM model..."
+hmmbuild $MODEL_DIR/kunitz.hmm $MODEL_DIR/kunitz.sto
 
-# Combine results for validation script
-cat results/pos_hmmsearch.tbl results/neg_hmmsearch.tbl > $RESULTS
+echo "Running hmmsearch against positives and negatives..."
+# Positives and negatives FASTA should be in data/processed
+hmmsearch --tblout $RESULTS_DIR/hmmsearch_positives.tbl $MODEL_DIR/kunitz.hmm $PROCESSED_DIR/positives.fasta > $RESULTS_DIR/hmmsearch_positives.out
+hmmsearch --tblout $RESULTS_DIR/hmmsearch_negatives.tbl $MODEL_DIR/kunitz.hmm $PROCESSED_DIR/negatives.fasta > $RESULTS_DIR/hmmsearch_negatives.out
 
 echo "Validating model..."
 python scripts/validate_model.py \
-  --results $RESULTS \
-  --positives $POSITIVES \
-  --negatives $NEGATIVES
+  --results $RESULTS_DIR \
+  --positives $PROCESSED_DIR/positives.fasta \
+  --negatives $PROCESSED_DIR/negatives.fasta
 
-echo "All done!"
+echo "Pipeline complete!"
 
 
