@@ -10,14 +10,14 @@ python3 scripts/extract_sequences.py
 echo "Step 3: Download UniProt Kunitz sequences"
 python3 scripts/get_uniprot_kunitz.py
 
-echo "Step 4: Prepare alignment (run MAFFT)"
+echo "Step 4: Align sequences with MAFFT"
 mkdir -p model
 mafft --auto data/raw/uniprot_kunitz.fasta > model/kunitz.sto
 
 echo "Step 5: Build HMM profile"
 hmmbuild model/kunitz.hmm model/kunitz.sto
 
-echo "Step 6: Run hmmsearch on PDB sequences"
+echo "Step 6: Run hmmsearch on extracted sequences"
 mkdir -p results
 hmmsearch --tblout results/hmmsearch_output.tbl model/kunitz.hmm data/processed/kunitz_seqs.fasta
 
@@ -26,4 +26,5 @@ python3 scripts/validate_model.py \
   -r results/hmmsearch_output.tbl \
   -p data/processed/positives.fasta \
   -n data/processed/negatives.fasta
+
 
