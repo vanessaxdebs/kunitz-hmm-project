@@ -1,45 +1,25 @@
 #!/bin/bash
-set -e  # stop if any command fails
+set -e
 
-echo "Downloading PDB structures..."
+echo "Step 1: Download PDB files"
 python3 scripts/download_pdbs.py
 
-echo "Extracting sequences..."
+echo "Step 2: Extract sequences from PDB files"
 python3 scripts/extract_sequences.py
 
-echo "Downloading UniProt Kunitz sequences..."
+echo "Step 3: Download UniProt Kunitz sequences"
 python3 scripts/get_uniprot_kunitz.py
 
-# Check if input fasta exists for alignment
-FASTA_IN="data/processed/kunitz_seqs.fasta"
-STO_OUT="model/kunitz.sto"
+echo "Step 4: Prepare alignment (run MAFFT)"
+mkdir -p model
+mafft --auto data/raw/uniprot_kunitz.fasta > model/kunitz.sto
 
-if [ ! -s "$FASTA_IN" ]; then
-  echo "Error: Input fasta $FASTA_IN not found or empty."
-  exit 1
-fi
+echo "Step 5: Build HMM profile"
+hmmbuild model/kunitz.hmm model/kunitz.sto
 
-echo "Running multiple sequence alignment with MAFFT..."
-mafft --auto "$FASTA_IN" > "$STO_OUT"
+echo "Step 6: Run hmmsearch on PDB sequences"
+mkdir -p results
+hmmsearch --tblout results/hmmsearch_output.tbl model/kunitz.hmm data/processed/pdb_sequences.fasta
 
-if [ ! -s "$STO_OUT" ]; then
-  echo "Error: Alignment output $STO_OUT is empty."
-  exit 1
-fi
-
-echo "Building HMM profile..."
-hmmbuild model/kunitz.hmm "$STO_OUT"
-
-echo "Running validation script..."
-# Adjust these paths and filenames to your validation data as needed
-RESULTS="results/hmmsearch_output.txt"
-POSITIVES="data/positives.fasta"
-NEGATIVES="data/negatives.fasta"
-
-if [ -f "$RESULTS" ] && [ -f "$POSITIVES" ] && [ -f "$NEGATIVES" ]; then
-  python3 scripts/validate_model.py -r "$RESULTS" -p "$POSITIVES" -n "$NEGATIVES"
-else
-  echo "Validation data not found, skipping validate_model.py."
-fi
-
-echo "Pipeline finished successfully."
+echo "Step 7: Validate model"
+python3 scripts/validate_model.py -r results/hmmsearch_output.tbl -p data/raw/uniprot_kunitz.fasta -n data/raw/negatives.fasta
