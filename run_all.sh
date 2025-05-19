@@ -19,7 +19,8 @@ hmmbuild model/kunitz.hmm model/kunitz.sto
 
 echo "Step 6: Run hmmsearch on PDB sequences"
 mkdir -p results
-hmmsearch --tblout results/hmmsearch_output.tbl model/kunitz.hmm data/processed/pdb_sequences.fasta
+hmmsearch --tblout results/hmmsearch_output.tbl model/kunitz.hmm data/processed/kunitz_seqs.fasta
 
 echo "Step 7: Validate model"
-python3 scripts/validate_model.py -r results/hmmsearch_output.tbl -p data/raw/uniprot_kunitz.fasta -n data/raw/negatives.fasta
+python3 scripts/validate_model.py -r results/hmmsearch_output.tbl -p data/processed/positives.fasta -n data/processed/negatives.fasta
+
