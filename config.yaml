@@ -1,0 +1,15 @@
+paths:
+  pdb_ids: data/raw/pdb_ids.txt
+  pdb_dir: data/raw/pdbs/
+  fasta_output: data/processed/kunitz_seqs.fasta
+  alignment: model/kunitz.sto
+  hmm_model: model/kunitz.hmm
+  swissprot: data/raw/swissprot.fasta
+  validation_set: data/processed/validation_set.fasta
+  hmm_results: results/hmm_output/
+  swissprot_results: results/swissprot_scan/
+
+parameters:
+  cath_code: "4.10.410.10"
+  pfam_id: "PF00014"
+  evalue_threshold: 1e-5
